@@ -1,15 +1,9 @@
 package org.cyclopsgroup.jmxterm.cmd;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
-import javax.management.JMException;
-import javax.management.MBeanAttributeInfo;
-import javax.management.MBeanServerConnection;
-import javax.management.ObjectName;
+import javax.management.*;
 
 import org.apache.commons.collections.map.ListOrderedMap;
 import org.apache.commons.lang.Validate;
@@ -46,57 +40,62 @@ public class GetCommand
     private void displayAttributes()
         throws IOException, JMException
     {
-        Session session = getSession();
-        String beanName = BeanCommand.getBeanName( bean, domain, session );
-        ObjectName name = new ObjectName( beanName );
-        session.output.printMessage( "mbean = " + beanName + ":" );
-        MBeanServerConnection con = session.getConnection().getServerConnection();
-        MBeanAttributeInfo[] ais = con.getMBeanInfo( name ).getAttributes();
-        Map<String, MBeanAttributeInfo> attributeNames =
-            ListOrderedMap.decorate( new HashMap<String, MBeanAttributeInfo>() );
-        if ( attributes.contains( "*" ) )
-        {
-            for ( MBeanAttributeInfo ai : ais )
-            {
-                attributeNames.put( ai.getName(), ai );
+        boolean getAllBeans = false;
+        try {
+            Session session = getSession();
+            String givenBeanName = BeanCommand.getBeanName(bean, domain, session);
+            List<String> allBeans = new ArrayList<String>();
+            if (givenBeanName == null) {
+                getAllBeans = true;
+                allBeans = BeansCommand.getBeans(session, null);
+            } else {
+                allBeans.add(givenBeanName);
             }
-        }
-        else
-        {
-            for ( String arg : attributes )
-            {
-                for ( MBeanAttributeInfo ai : ais )
-                {
-                    if ( ai.getName().equals( arg ) )
-                    {
-                        attributeNames.put( arg, ai );
-                        break;
+            for (String beanName : allBeans) {
+                ObjectName name = new ObjectName(beanName);
+                session.output.printMessage("mbean = " + beanName + ":");
+                MBeanServerConnection con = session.getConnection().getServerConnection();
+                MBeanAttributeInfo[] ais = con.getMBeanInfo(name).getAttributes();
+                Map<String, MBeanAttributeInfo> attributeNames =
+                    ListOrderedMap.decorate(new HashMap<String, MBeanAttributeInfo>());
+                if (attributes.contains("*")) {
+                    for (MBeanAttributeInfo ai : ais) {
+                        attributeNames.put(ai.getName(), ai);
+                    }
+                } else {
+                    for (String arg : attributes) {
+                        for (MBeanAttributeInfo ai : ais) {
+                            if (ai.getName().equals(arg)) {
+                                attributeNames.put(arg, ai);
+                                break;
+                            }
+                        }
+                    }
+                }
+                ValueOutputFormat format = new ValueOutputFormat(2, showDescription, showQuotationMarks);
+                for (Map.Entry<String, MBeanAttributeInfo> entry : attributeNames.entrySet()) {
+                    String attributeName = entry.getKey();
+                    MBeanAttributeInfo i = entry.getValue();
+                    if (i.isReadable()) {
+                        Object result = con.getAttribute(name, attributeName);
+                        if (simpleFormat) {
+                            format.printValue(session.output, result);
+                        } else {
+                            format.printExpression(session.output, attributeName, result, i.getDescription());
+                        }
+                        session.output.println("");
+                    } else {
+                        session.output.printMessage(i.getName() + " is not readable");
                     }
                 }
             }
-        }
-        ValueOutputFormat format = new ValueOutputFormat( 2, showDescription, showQuotationMarks );
-        for ( Map.Entry<String, MBeanAttributeInfo> entry : attributeNames.entrySet() )
-        {
-            String attributeName = entry.getKey();
-            MBeanAttributeInfo i = entry.getValue();
-            if ( i.isReadable() )
-            {
-                Object result = con.getAttribute( name, attributeName );
-                if ( simpleFormat )
-                {
-                    format.printValue( session.output, result );
-                }
-                else
-                {
-                    format.printExpression( session.output, attributeName, result, i.getDescription() );
-                }
-                session.output.println( "" );
+        } catch(RuntimeMBeanException mbe) {
+            if (getAllBeans) {
+                // Just ignore UnsupportedOperationException
+            } else {
+                throw mbe;
             }
-            else
-            {
-                session.output.printMessage( i.getName() + " is not readable" );
-            }
+
         }
     }
 
