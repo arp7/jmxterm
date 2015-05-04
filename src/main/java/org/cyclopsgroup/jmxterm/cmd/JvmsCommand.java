@@ -2,7 +2,9 @@ package org.cyclopsgroup.jmxterm.cmd;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.management.JMException;
 
@@ -23,16 +25,10 @@ public class JvmsCommand
     extends Command
 {
     private boolean pidOnly;
-
-    /**
-     * @inheritDoc
-     */
-    @Override
-    public void execute()
-        throws IOException, JMException
-    {
-        Session session = getSession();
+    
+    public static Map<String, String> getJvmsList(Session session, String filter) {
         List<JavaProcess> processList;
+        Map<String, String> sessions = new HashMap<String, String>();
 
         // classworlds has some hard coded stdout printing. Therefore stdout needs to be redirected temporarily to avoid
         // meaningless console output
@@ -46,17 +42,36 @@ public class JvmsCommand
         {
             System.setOut( stdOut );
         }
-        for ( JavaProcess p : processList )
+        for ( JavaProcess p : processList ) {
+            if (filter == null || filter.equalsIgnoreCase(p.getDisplayName())) {
+                sessions.put(
+                    String.valueOf(p.getProcessId()),
+                    String
+                        .format("%-8d (%s) - %s", p.getProcessId(), p.isManageable() ? "m" : " ", p.getDisplayName()));
+            }
+        }
+        return sessions;
+    } 
+
+    /**
+     * @inheritDoc
+     */
+    @Override
+    public void execute()
+        throws IOException, JMException
+    {
+        Session session = getSession();
+        Map<String, String> sessions = getJvmsList(session, null);
+        for ( Map.Entry<String, String> entry : sessions.entrySet()  )
         {
             if ( pidOnly )
             {
-                session.output.println( String.valueOf( p.getProcessId() ) );
+                session.output.println( String.valueOf( entry.getKey() ) );
             }
             else
             {
 
-                session.output.println( String.format( "%-8d (%s) - %s", p.getProcessId(),
-                                                       p.isManageable() ? "m" : " ", p.getDisplayName() ) );
+                session.output.println( String.format( entry.getValue() ) );
             }
         }
     }

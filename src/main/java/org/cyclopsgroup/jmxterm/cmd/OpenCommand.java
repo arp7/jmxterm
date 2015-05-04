@@ -30,29 +30,8 @@ public class OpenCommand
     private String url;
 
     private String user;
-
-    /**
-     * @inheritDoc
-     */
-    @Override
-    public void execute()
-        throws IOException
-    {
-        Session session = getSession();
-        if ( url == null )
-        {
-            Connection con = session.getConnection();
-            if ( con == null )
-            {
-                session.output.printMessage( "not connected" );
-                session.output.println( SyntaxUtils.NULL );
-            }
-            else
-            {
-                session.output.println( String.format( "%s,%s", con.getConnectorId(), con.getUrl() ) );
-            }
-            return;
-        }
+    
+    public static void openUrl(Session session, String url, String user, String password) throws IOException {
         Map<String, Object> env;
         if ( user != null )
         {
@@ -78,10 +57,35 @@ public class OpenCommand
             if ( NumberUtils.isDigits( url ) )
             {
                 session.output.printMessage( "Couldn't connect to PID " + url
-                    + ", it's likely that your version of JDK doesn't allow to connect to a process directly" );
+                                                 + ", it's likely that your version of JDK doesn't allow to connect to a process directly" );
             }
             throw e;
         }
+    }
+
+    /**
+     * @inheritDoc
+     */
+    @Override
+    public void execute()
+        throws IOException
+    {
+        Session session = getSession();
+        if ( url == null )
+        {
+            Connection con = session.getConnection();
+            if ( con == null )
+            {
+                session.output.printMessage( "not connected" );
+                session.output.println( SyntaxUtils.NULL );
+            }
+            else
+            {
+                session.output.println( String.format( "%s,%s", con.getConnectorId(), con.getUrl() ) );
+            }
+            return;
+        }
+        openUrl(session, url, user, password);
     }
 
     /**

@@ -91,10 +91,6 @@ class SessionImpl
     @Override
     public Connection getConnection()
     {
-        if ( connection == null )
-        {
-            throw new IllegalStateException( "Connection isn't open yet. Run open command to open a connection" );
-        }
         return connection;
     }
 

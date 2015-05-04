@@ -35,14 +35,13 @@ public class GetCommand
     private boolean showQuotationMarks;
 
     private boolean simpleFormat;
-
+    
+    private String filter = null;
+    
     @SuppressWarnings( "unchecked" )
-    private void displayAttributes()
-        throws IOException, JMException
-    {
+    private void displayAttributesForConnection(Session session) throws IOException, JMException {
         boolean getAllBeans = false;
         try {
-            Session session = getSession();
             String givenBeanName = BeanCommand.getBeanName(bean, domain, session);
             List<String> allBeans = new ArrayList<String>();
             if (givenBeanName == null) {
@@ -95,7 +94,26 @@ public class GetCommand
             } else {
                 throw mbe;
             }
+        }
+    }
 
+
+    @SuppressWarnings( "unchecked" )
+    private void displayAttributes()
+        throws IOException, JMException
+    {
+        Session session = getSession();
+        if (session.getConnection() != null) {
+            displayAttributesForConnection(session);
+        } else if (filter != null) {
+            Map<String, String> jvms = JvmsCommand.getJvmsList(session, filter);
+            for (String pidString : jvms.keySet()) {
+                OpenCommand.openUrl(session, pidString, null, null);
+                displayAttributesForConnection(session);
+                session.disconnect();
+            }
+        } else {
+            throw new IllegalArgumentException("No filter specified and not connected");
         }
     }
 
@@ -209,6 +227,12 @@ public class GetCommand
     public final void setSimpleFormat( boolean simpleFormat )
     {
         this.simpleFormat = simpleFormat;
+    }
+    
+    @Option ( name = "f", longName = "filter", description = "Automatically connect to JVMs matching given display name filter" )
+    public final void setFilter(String filter)
+    {
+        this.filter = filter;
     }
 
 }
