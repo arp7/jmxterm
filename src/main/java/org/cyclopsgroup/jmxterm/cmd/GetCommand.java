@@ -36,7 +36,9 @@ public class GetCommand
 
     private boolean simpleFormat;
     
-    private String filter = null;
+    private String jvmFilter = null;
+    
+    private String attributeFilter = null;
     
     @SuppressWarnings( "unchecked" )
     private void displayAttributesForConnection(Session session) throws IOException, JMException {
@@ -52,7 +54,7 @@ public class GetCommand
             }
             for (String beanName : allBeans) {
                 ObjectName name = new ObjectName(beanName);
-                session.output.printMessage("mbean = " + beanName + ":");
+                boolean printedMbeanName = false;
                 MBeanServerConnection con = session.getConnection().getServerConnection();
                 MBeanAttributeInfo[] ais = con.getMBeanInfo(name).getAttributes();
                 Map<String, MBeanAttributeInfo> attributeNames =
@@ -75,6 +77,17 @@ public class GetCommand
                 for (Map.Entry<String, MBeanAttributeInfo> entry : attributeNames.entrySet()) {
                     String attributeName = entry.getKey();
                     MBeanAttributeInfo i = entry.getValue();
+                    
+                    if (attributeFilter != null &&
+                        !attributeName.matches(attributeFilter)) {
+                        continue;
+                    }
+                    
+                    // Output mbean name iff there is a matching attribute.
+                    if (!printedMbeanName) {
+                        session.output.printMessage("mbean = " + beanName + ":");
+                        printedMbeanName = true;
+                    }
                     if (i.isReadable()) {
                         Object result = con.getAttribute(name, attributeName);
                         if (simpleFormat) {
@@ -105,8 +118,8 @@ public class GetCommand
         Session session = getSession();
         if (session.getConnection() != null) {
             displayAttributesForConnection(session);
-        } else if (filter != null) {
-            Map<String, String> jvms = JvmsCommand.getJvmsList(session, filter);
+        } else if (jvmFilter != null) {
+            Map<String, String> jvms = JvmsCommand.getJvmsList(session, jvmFilter);
             for (String pidString : jvms.keySet()) {
                 OpenCommand.openUrl(session, pidString, null, null);
                 displayAttributesForConnection(session);
@@ -229,10 +242,15 @@ public class GetCommand
         this.simpleFormat = simpleFormat;
     }
     
-    @Option ( name = "f", longName = "filter", description = "Automatically connect to JVMs matching given display name filter" )
-    public final void setFilter(String filter)
+    @Option ( name = "j", longName = "JvmFilter", description = "Automatically connect to JVMs matching given display name filter" )
+    public final void setJvmFilter(String filter)
     {
-        this.filter = filter;
+        this.jvmFilter = filter;
     }
 
+    @Option ( name = "a", longName = "AttributeFilter", description = "Only display attributes matching the given filter" )
+    public final void setAttributeFilter(String attributeFilter)
+    {
+        this.attributeFilter = attributeFilter;
+    }
 }
