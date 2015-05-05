@@ -1,1 +1,8 @@
+Fork of https://github.com/jiaqi/jmxterm with some kludges to
+improve usability in scripts.
+
+Mainly allows expression matching of attribute names and process 
+names so you don't have to lookup PIDs.
+
+---
 Read more in http://wiki.cyclopsgroup.org/jmxterm
